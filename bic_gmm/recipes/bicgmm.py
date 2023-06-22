@@ -40,6 +40,7 @@ class GridBICGMM(ModuleBase):
     covariance = Enum(('full', 'tied', 'diag', 'spherical'))
     max_iter = Int(100)
     n_initializations = Int(1)
+    n_grid_procs = Int(5)
     init_params = Enum(('kmeans', 'random'))
     label_key = CStr('gmm_label')
     output_labeled = Output('labeled_points')
@@ -58,7 +59,7 @@ class GridBICGMM(ModuleBase):
             X = np.stack([points['x'].astype(np.float32), points['y'].astype(np.float32), points['z'].astype(np.float32)], axis=1)
         
         # n is treated as max
-        best = self._check_bic_grid(X, 1, self.n)
+        best = self._check_bic_grid(X, 1, self.n, max_grid_points=self.n_grid_procs)
         print('BEST: %d' % best)
         gmm = GaussianMixture(n_components=best,
                                 covariance_type=self.covariance,
@@ -141,6 +142,7 @@ def _gmm(X, gmm_args, queue):
     queue.put((n, float(bic)))
 
 
+@register_module('PredictLabelsFromGMM')
 class PredictLabelsFromGMM(ModuleBase):
     input_points = Input('input')
     input_gmm = Input('gmm')
@@ -172,7 +174,7 @@ class PredictLabelsFromGMM(ModuleBase):
                           input_points['y'].astype(np.float32), 
                           input_points['z'].astype(np.float32)], axis=1)
         
-        labels = input_gmm.predict(X)
+        labels = input_gmm.predict(X) + 1  # PYME labeling scheme
 
         output_points = MappingFilter(input_points)
         try:
