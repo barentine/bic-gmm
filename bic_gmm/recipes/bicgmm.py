@@ -139,3 +139,46 @@ def _gmm(X, gmm_args, queue):
     bic = gmm.bic(X)
     logger.debug('%d BIC: %f' % (n, bic))
     queue.put((n, float(bic)))
+
+
+class PredictLabelsFromGMM(ModuleBase):
+    input_points = Input('input')
+    input_gmm = Input('gmm')
+    label_key = CStr('gmm_label')
+    output_points = Output('gmm_labeled')
+
+    def run(self, input_points, input_gmm):
+        """
+
+        Parameters
+        ----------
+        input_points : PYME.IO.tabular.TabularBase
+            _description_
+        input_gmm : klearn.mixture.GaussianMixture
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        from PYME.IO.tabular import MappingFilter
+        if np.all(input_points['z'] == input_points['z'][0]):
+            # we have 2D data, make this faster for us
+            logger.debug('Z is flat, using 2D GMM')
+            X = np.stack([input_points['x'].astype(np.float32), input_points['y'].astype(np.float32)], axis=1)
+        else:
+            X = np.stack([input_points['x'].astype(np.float32), 
+                          input_points['y'].astype(np.float32), 
+                          input_points['z'].astype(np.float32)], axis=1)
+        
+        labels = input_gmm.predict(X)
+
+        output_points = MappingFilter(input_points)
+        try:
+            output_points.mdh = input_points.mdh
+        except AttributeError:
+            pass
+        
+        output_points.addColumn(self.label_key, labels)
+        return output_points
