@@ -174,7 +174,8 @@ class PredictLabelsFromGMM(ModuleBase):
                           input_points['y'].astype(np.float32), 
                           input_points['z'].astype(np.float32)], axis=1)
         
-        labels = input_gmm.predict(X) + 1  # PYME labeling scheme
+        predictions = input_gmm.predict(X) + 1  # PYME labeling scheme
+        log_prob = input_gmm.score_samples(X)
 
         output_points = MappingFilter(input_points)
         try:
@@ -182,5 +183,11 @@ class PredictLabelsFromGMM(ModuleBase):
         except AttributeError:
             pass
         
-        output_points.addColumn(self.label_key, labels)
+        output_points.addColumn(self.label_key, predictions)
+        output_points.addColumn(self.label_key + '_log_prob', log_prob)
+        avg_log_prob = np.empty_like(log_prob)
+        for label in np.unique(predictions):
+            mask = label == predictions
+            avg_log_prob[mask] = np.mean(log_prob[mask])
+        output_points.addColumn(self.label_key + '_avg_log_prob', avg_log_prob)
         return output_points
