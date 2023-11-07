@@ -1,0 +1,38 @@
+- tablefilters.RandomSubset:
+    input: Localizations
+    num_to_select: 200000
+    output: subset
+- bic_gmm.GridBICGMM:
+    input_points: subset
+    n: 2500
+    n_grid_procs: 4
+    output_gmm: gmm
+    output_labeled: labeled_points
+- bic_gmm.PredictLabelsFromGMM:
+    input_gmm: gmm
+    input_points: Localizations
+    output_points: gmm_labeled
+- localisations.MeasureClusters3D:
+    inputName: gmm_labeled
+    labelKey: gmm_label
+    outputName: clusterMeasures
+- localisations.AddPipelineDerivedVars:
+    inputEvents: ''
+    inputFitResults: FitResults
+    outputLocalizations: Localizations
+- output.HDFOutput:
+    filePattern: '{output_dir}/{file_stub}.hdf'
+    inputVariables:
+      clusterMeasures: cluster_measures
+      gmm_labeled: gmm_labeled
+- tablefilters.FilterTable:
+    filters:
+      gmm_label_log_prob:
+      - -25.0
+      - 100000.0
+    inputName: gmm_labeled
+    outputName: gmm_labeled_f1
+- localisations.MeasureClusters3D:
+    inputName: gmm_labeled_f1
+    labelKey: gmm_label
+    outputName: clusterMeasures_f1

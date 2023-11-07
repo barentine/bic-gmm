@@ -1,0 +1,38 @@
+- localisations.AddPipelineDerivedVars:
+    inputEvents: ''
+    inputFitResults: FitResults
+    outputLocalizations: Localizations
+- localisations.ProcessColour:
+    input: Localizations
+    output: colour_mapped
+- tablefilters.FilterTable:
+    inputName: colour_mapped
+    outputName: filtered_localizations
+- localisations.MeasureClusters3D:
+    inputName: filtered_localizations
+    labelKey: gmm_label
+    outputName: clusterMeasures
+- bic_gmm.AddMeasurementsByLabel:
+    input_measurements: mapped
+    input_points: filtered_localizations
+    label_key: gmm_label
+    output_points: annotated_points
+- tablefilters.Mapping:
+    inputName: clusterMeasures
+    mappings:
+      circular_density: count / (np.pi * (gyrationRadius ** 2))
+    outputName: mapped
+- tablefilters.FilterTable:
+    filters:
+      gmm_label_circular_density:
+      - 0.005
+      - 9000000000.0
+    inputName: annotated_points
+    outputName: filtered_and_annotated
+- tablefilters.FilterTable:
+    filters:
+      gmm_label_circular_density:
+      - 0.0
+      - 0.005
+    inputName: annotated_points
+    outputName: density_rejected
